@@ -1,0 +1,14 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+INFLUXDBHOST = ""
+INFLUXDBPORT = ""
+INFLUXDBTIMEOUT = ""
+INFLUXDBUSER = ""
+INFLUXDBPASS = ""
+INFLUXDB_SSL = ""
+
+REDISHOST = ""
+REDISPORT = ""
+
+FLOW_TIME_OUT = 300
