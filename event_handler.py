@@ -4,56 +4,82 @@
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet, ipv4
 
+import config
 from flow_entry import BaseFlowEntry, IpFlowEntry
+from database.influxdb.influx import BaseInfluxdb
+
+
+influxdb_client = BaseInfluxdb(config.INFLUXDB_DB).client
 
 
 def packet_in_handler(msg):
     datapath = msg.datapath
+    in_port = msg.match.get("in_port")
     ip_flow_entry = IpFlowEntry()
 
     pkt = packet.Packet(msg.data)
     eth = pkt.get_protocols(ethernet.ethernet)[0]
     ip = pkt.get_protocol(ipv4.ipv4)
 
-    if ip:
-        dst = ip.dst
-        ip_flow_entry.add(datapath, dst)
+    if in_port != config.WAN_PORT:
+        if ip:
+            dst = ip.dst
+            ip_flow_entry.add(datapath, dst)
 
 
 def flow_stats_reply_handler(msg, flow_stats, counter):
     datapath = msg.datapath
-    ofp_parser = datapath.ofproto_parser
 
     if not counter.get('flow'):
         counter['flow'] = 0
 
     for stats in msg.body:
+        flow_points = []
         counter['flow'] += 1
         match = stats.match
         priority = stats.priority
         ip_dst = match.get('ipv4_dst')
+        ip_src = match.get('ipv4_src')
+        _type = "_"
+        ip = "_"
 
-        flow_id = ip_dst
+        if ip_dst:
+            _type = "in"
+            ip = ip_dst
+        elif ip_src:
+            _type = "out"
+            ip = ip_src
 
-        if not flow_stats.get(flow_id):
-            ip_info = {
-                'byte': 0,
-                'packet': 0,
-            }
-            flow_stats.update(ip_info)
-            byte_count = 0
-            packet_count = 0
-        else:
-            tmp_byte_count = stats.byte_count - flow_stats[flow_id]['byte']
-            if tmp_byte_count < 0:
-                # 流表被重新添加
-                byte_count = stats.byte_count
-                packet_count = stats.packet_count
+        flow_id = _type + "_" + str(ip_dst) + "_" + str(ip_src)
+        if ip != "_":
+            if not flow_stats.get(flow_id):
+                ip_info = {
+                    'byte': stats.byte_count,
+                    'packet': stats.packet_count,
+                }
+                flow_stats.update({flow_id: ip_info})
+                byte_count = 0
+                packet_count = 0
             else:
-                byte_count = tmp_byte_count
-                packet_count = stats.packet_count - flow_stats[flow_id]['packet']
-        flow_stats[flow_id] = stats.byte_count
-        flow_stats[flow_id] = stats.packet_count
+                tmp_byte_count = int(stats.byte_count) - flow_stats[flow_id]['byte']
+                if tmp_byte_count < 0:
+                    # 流表被重新添加
+                    byte_count = int(stats.byte_count)
+                    packet_count = int(stats.packet_count)
+                else:
+                    byte_count = int(tmp_byte_count)
+                    packet_count = int(stats.packet_count) - flow_stats[flow_id]['packet']
+            bit_count = byte_count * 8
+            flow_stats[flow_id]["byte"] = stats.byte_count
+            flow_stats[flow_id]["packet"] = stats.packet_count
+            line_point = "ip_flow_10s,dpid=%s,ip=%s,type=%s bit_count=%d,packet_count=%d" % (datapath.id, ip, _type,
+                                                                                            bit_count, packet_count)
+            flow_points.append(line_point)
+            if flow_points:
+                try:
+                    influxdb_client.write_points(flow_points, protocol='line')
+                except Exception as e:
+                    print("write influxdb error %s" % str(e))
 
 
 def err_msg_handler(msg):

@@ -14,3 +14,7 @@ class BaseInfluxdb(InfluxDBClient):
                                      ssl=config.INFLUXDB_SSL)
         self.db_name = db_name
 
+if __name__ == '__main__':
+    influx_client = BaseInfluxdb(config.INFLUXDB_DB).client
+    res = influx_client.query("select * from ip_20m limit 5")
+    print(res)

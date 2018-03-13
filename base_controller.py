@@ -24,7 +24,7 @@ class Controller(app_manager.RyuApp):
         self.flow_stats = {}
         self.counter = {'flow': 0}
         self.datapath_dic = {}
-        # self.monitor_thread = hub.spawn(self.monitor)
+        self.monitor_thread = hub.spawn(self.monitor)
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -37,21 +37,27 @@ class Controller(app_manager.RyuApp):
 
         self.datapath_dic.update({dpid: datapath})
 
-        match = parser.OFPMatch()
         to_normal = [parser.OFPActionOutput(ofproto.OFPP_NORMAL)]
+
+        match_port_3 = parser.OFPMatch(eth_type=0x800, in_port=3)
+        inst_normal = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, to_normal)]
+
+        match = parser.OFPMatch()
         to_controller = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER)]
-        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, to_normal),
+        inst_nom_cotr = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, to_normal),
                 parser.OFPInstructionActions(ofproto.OFPIT_WRITE_ACTIONS, to_controller)]
-        base_flow_entry.add(datapath=datapath, priority=1, match=match, inst=inst, hard_timeout=0, idle_timeout=0,
+
+        base_flow_entry.add(datapath=datapath, priority=1, match=match, inst=inst_nom_cotr, hard_timeout=0, idle_timeout=0,
                             table_id=0, flags=ofproto.OFPFF_NO_PKT_COUNTS | ofproto.OFPFF_NO_BYT_COUNTS, cookie=100)
+        base_flow_entry.add(datapath=datapath, priority=1, match=match_port_3, inst=inst_normal, hard_timeout=0,
+                            idle_timeout=0,table_id=0, flags=ofproto.OFPFF_NO_PKT_COUNTS | ofproto.OFPFF_NO_BYT_COUNTS,
+                            cookie=100)
 
     def monitor(self):
         while True:
             for dpid, datapath in self.datapath_dic.items():
-                if self.counter['flow'] == 50000:
-                    self._request_flow_stats(datapath)
-                    self.counter['flow'] = 0
-            hub.sleep(0.001)
+                self._request_flow_stats(datapath)
+            hub.sleep(1)
 
     def _request_flow_stats(self, datapath):
         ofproto = datapath.ofproto
