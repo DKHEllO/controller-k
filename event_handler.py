@@ -23,7 +23,7 @@ def packet_in_handler(msg):
 
     if in_port != config.WAN_PORT:
         if ip:
-            dst = ip.dst
+            dst = ip.src
             ip_flow_entry.add(datapath, dst)
 
 

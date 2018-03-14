@@ -19,5 +19,7 @@ WAN_PORT = ""
 
 FLOW_TIME_OUT = 300
 
+RESTAPIPORT = 8888
+
 from local_config import *
 

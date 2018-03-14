@@ -14,7 +14,14 @@ class BaseInfluxdb(InfluxDBClient):
                                      ssl=config.INFLUXDB_SSL)
         self.db_name = db_name
 
+    def get_ip_flow(self, ip, clock):
+        query_str = "SELECT * FROM ip_flow_10s WHERE time>='%s' AND ip='%s'" % (clock, ip)
+        res = self.client.query(query_str)
+        for records in res:
+            return records
+
+
 if __name__ == '__main__':
     influx_client = BaseInfluxdb(config.INFLUXDB_DB).client
-    res = influx_client.query("select * from ip_20m limit 5")
+    res = influx_client.query("select * from ip_flow_10s where ip='10.0.0.2'")
     print(res)

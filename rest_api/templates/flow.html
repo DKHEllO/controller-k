@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <script src="static/js/highcharts.js"></script>
+    <script src="static/js/jquery.min.js"></script>
+    <script src="static/js/series-label.js"></script>
+    <script src="static/js/exporting.js"></script>
+    <script src="static/js/get_flow.js"></script>
+    <script>
+    function getUrlRequest() {
+        var url = location.search;
+        var theRequest = new Object();
+        if(url.indexOf("?") != -1) {
+            var str = url.substr(1);
+            if(str.indexOf("&") != -1) {
+                strs = str.split("&");
+                for(var i = 0; i < strs.length; i++) {
+                    theRequest[strs[i].split("=")[0]] = decodeURI(strs[i].split("=")[1]);
+                }
+            } else {
+                var key = str.substring(0, str.indexOf("="));
+                var value = str.substr(str.indexOf("=") + 1);
+                theRequest[key] = decodeURI(value);
+            }
+        }
+        return theRequest;
+    }
+    $(document).ready(function() {
+        var params = getUrlRequest();
+	    var ip = params["ip"];
+        var url = "/get_flow?ip=" + ip;
+        $.getJSON(url, function(json_data) {
+            var json = json_data;
+            if (json.success) {
+                if (json.data instanceof Array) {
+                        var data_byte = [{
+                                name: "入流量",
+                                en_name: "in_bit_count",
+                                data: []
+                            },
+                            {
+                                name: "出流量",
+                                en_name: "out_bit_count",
+                                data: []
+                            }
+                        ];
+                        var data_pkt =
+                            [{
+                                name: "入包数",
+                                en_name: "in_pkt_count",
+                                data: []
+                            },
+                                {
+                                    name: "出包数",
+                                    en_name: "out_pkt_count",
+                                    data: []
+                                }
+                            ];
+                        for (var i in json.data) {
+                            var t = json.data[i].time + "";
+                            var time_array = t.replace(/Z/g, "").replace(/-/g, ",").replace(/T/g, ",").replace(/:/g, ",").split(",");
+                            time_array[1] = Number(time_array[1]) - 1;
+                            t = Date.UTC.apply(false, time_array) + 28800000; //+8小时
+                            if (json.data[i].type == "in") {
+                                data_byte[0].data.push([t, json.data[i].bit_count]);
+                                data_pkt[0].data.push([t, json.data[i].packet_count]);
+                            } else if (json.data[i].type == "out") {
+                                data_byte[1].data.push([t, json.data[i].bit_count]);
+                                data_pkt[1].data.push([t, json.data[i].packet_count]);
+                            }
+                        }
+                        draw_flow("流量统计", "纵轴为总流量 横轴为时间", " bit/s", "时间", "byte", data_byte);
+                        draw_flow("包数统计", "纵轴为总包数 横轴为时间", " 个/s", "时间", "packet", data_pkt);
+                }else {
+                    alert("无该ip或当前ip无数据")
+                }
+            }
+        })
+    })
+    </script>
+</head>
+<body>
+    <div id="byte"></div>
+    <div id="packet"></div>
+</body>
+</html>
