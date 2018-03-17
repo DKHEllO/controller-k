@@ -40,7 +40,11 @@ function draw_flow(name, description, y_name, x_name, div_id, data) {
             series: {
                 label: {
                     connectorAllowed: false
-                }
+                },
+                marker: {
+					radius: 0 //曲线点半径，默认是4
+					// symbol: 'diamond' //曲线点类型："circle", "square", "diamond", "triangle","triangle-down"，默认是"circle"
+				}
             }
         },
 

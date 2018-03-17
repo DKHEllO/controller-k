@@ -73,9 +73,9 @@
                         }
                         draw_flow("流量统计", "纵轴为总流量 横轴为时间", " bit/s", "时间", "byte", data_byte);
                         draw_flow("包数统计", "纵轴为总包数 横轴为时间", " 个/s", "时间", "packet", data_pkt);
-                }else {
-                    alert("无该ip或当前ip无数据")
                 }
+            }else {
+                    alert(json.err_msg);
             }
         })
     })

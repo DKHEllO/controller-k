@@ -5,6 +5,9 @@
     <title>首页</title>
 </head>
 <body>
-    <h1>Flow Monitor System</h1>
+    <center><h1>Flow Monitor System</h1></center>
+    {% for item in items %}
+         <center><a href="show_flow?ip={{ item }}">{{ item }}</a></center>
+       {% end %}
 </body>
 </html>

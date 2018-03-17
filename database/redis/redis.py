@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import database.redis
+import redis
 
 import config
 
@@ -17,7 +17,7 @@ class RedisListEmpty(Exception):
 class BaseRedisDb(object):
     def __init__(self, host=config.REDISHOST, port=config.REDISPORT, db=0):
         super(BaseRedisDb, self).__init__()
-        self.client = database.redis.StrictRedis(host, port, db=db, decode_responses=True)
+        self.client = redis.StrictRedis(host, port, db=db, decode_responses=True)
 
     def get_client(self):
         return self.client

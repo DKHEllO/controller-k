@@ -49,7 +49,7 @@ class Controller(app_manager.RyuApp):
 
         base_flow_entry.add(datapath=datapath, priority=1, match=match, inst=inst_nom_cotr, hard_timeout=0, idle_timeout=0,
                             table_id=0, flags=ofproto.OFPFF_NO_PKT_COUNTS | ofproto.OFPFF_NO_BYT_COUNTS, cookie=100)
-        base_flow_entry.add(datapath=datapath, priority=1, match=match_port_3, inst=inst_normal, hard_timeout=0,
+        base_flow_entry.add(datapath=datapath, priority=2, match=match_port_3, inst=inst_normal, hard_timeout=0,
                             idle_timeout=0,table_id=0, flags=ofproto.OFPFF_NO_PKT_COUNTS | ofproto.OFPFF_NO_BYT_COUNTS,
                             cookie=100)
 

@@ -7,9 +7,11 @@ from ryu.lib.packet import ethernet, ipv4
 import config
 from flow_entry import BaseFlowEntry, IpFlowEntry
 from database.influxdb.influx import BaseInfluxdb
+from database.redis.redis import BaseRedisDb
 
 
 influxdb_client = BaseInfluxdb(config.INFLUXDB_DB).client
+redis_client = BaseRedisDb()
 
 
 def packet_in_handler(msg):
@@ -24,7 +26,8 @@ def packet_in_handler(msg):
     if in_port != config.WAN_PORT:
         if ip:
             dst = ip.src
-            ip_flow_entry.add(datapath, dst)
+            if not redis_client.has_key("temp_flow-3-%s" % ip):
+                ip_flow_entry.add(datapath, dst)
 
 
 def flow_stats_reply_handler(msg, flow_stats, counter):

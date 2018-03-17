@@ -7,6 +7,9 @@ from tornado.web import RequestHandler
 
 import config
 from database.influxdb.influx import BaseInfluxdb
+from database.redis.redis import BaseRedisDb
+
+redis_client = BaseRedisDb()
 
 
 class BaseHandler(RequestHandler):
@@ -34,7 +37,12 @@ class BaseHandler(RequestHandler):
 
 class IndexHandler(BaseHandler):
     def get(self, *args, **kwargs):
-        self.render("templates/index.html")
+        ip_lsit = []
+        keys = redis_client.get_keys("temp_flow-3-*")
+        for key in keys:
+            ip = key.split("-")[2]
+            ip_lsit.append(ip)
+        self.render("templates/index.html", items=ip_lsit)
 
 
 class ShowIpFlowHandler(BaseHandler):
@@ -45,10 +53,15 @@ class ShowIpFlowHandler(BaseHandler):
 class GetIpFlowHandler(BaseHandler):
     def get(self, *args, **kwargs):
         try:
-            clock = (datetime.utcnow() - timedelta(seconds=60)).replace(minute=0, second=0, microsecond=0)
+            clock = (datetime.utcnow() - timedelta(seconds=60)).replace(microsecond=0)
+            print(datetime.utcnow(), clock)
             influx_client = BaseInfluxdb(config.INFLUXDB_DB)
             ip = self.get_argument('ip', '')
-            res = influx_client.get_ip_flow(ip, clock)
-            self.write_response(res)
+            redis_keys = redis_client.get_keys("*\-*\-%s" % ip)
+            if redis_keys:
+                res = influx_client.get_ip_flow(ip, clock)
+                self.write_response(res)
+            else:
+                self.write_response("", _status=0, _err="无该ip")
         except Exception as e:
             return e

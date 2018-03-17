@@ -2,6 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import config
+from database.redis.redis import BaseRedisDb
+
+redis_client = BaseRedisDb()
+
 
 class FlowEntry(object):
     def __init__(self, **kwargs):
@@ -90,10 +94,15 @@ class IpFlowEntry(FlowEntry):
         normal_inst = [parser.OFPActionOutput(ofproto.OFPP_NORMAL)]
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, normal_inst)]
 
-        self._add(datapath=datapath, priority=priority, match=in_match, inst=inst, hard_timeout=hard_timeout,
-                  idle_timeout=idle_timeout,cookie=cookie, table_id=table_id, flags=ofproto.OFPFF_SEND_FLOW_REM)
-        self._add(datapath=datapath, priority=priority, match=out_match, inst=inst, hard_timeout=hard_timeout,
-                  idle_timeout=idle_timeout,cookie=cookie, table_id=table_id, flags=ofproto.OFPFF_SEND_FLOW_REM)
+        if not redis_client.has_key("temp_flow-3-%s" % ip):
+            self._add(datapath=datapath, priority=priority, match=in_match, inst=inst, hard_timeout=hard_timeout,
+                      idle_timeout=idle_timeout,cookie=cookie, table_id=table_id, flags=ofproto.OFPFF_SEND_FLOW_REM)
+            print("IpFlow added: match: %s" % str(in_match))
+            self._add(datapath=datapath, priority=priority, match=out_match, inst=inst, hard_timeout=hard_timeout,
+                      idle_timeout=idle_timeout,cookie=cookie, table_id=table_id, flags=ofproto.OFPFF_SEND_FLOW_REM)
+            print("IpFlow added: match: %s" % str(in_match))
+            redis_key = "temp_flow-%s-%s" % (priority, ip)
+            redis_client.set_key(redis_key, 0, timeout=config.FLOW_TIME_OUT)
 
     def remove(self, datapath, ip, priority=3, cookie=101, table_id=0):
         parser = datapath.ofproto_parser
@@ -102,4 +111,8 @@ class IpFlowEntry(FlowEntry):
         out_match = parser.OFPMatch(eth_type=0x800, ip_src=ip)
 
         self._remove(datapath=datapath, priority=priority, match=in_match, cookie=cookie, table_id=table_id)
+        print("IpFlow removed: match: %s" % str(in_match))
         self._remove(datapath=datapath, priority=priority, match=out_match, cookie=cookie, table_id=table_id)
+        print("IpFlow removed: match: %s" % str(in_match))
+        redis_key = "temp_flow-%s-%s" % (priority, ip)
+        redis_client.del_key(redis_key)
